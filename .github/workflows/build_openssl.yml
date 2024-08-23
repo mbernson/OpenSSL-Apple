@@ -1,0 +1,66 @@
+name: Build OpenSSL XCFramework
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build OpenSSL XCFramework
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download OpenSSL source code
+        run: |
+          curl -LO https://github.com/openssl/openssl/releases/download/openssl-3.3.1/openssl-3.3.1.tar.gz
+          tar xzf openssl-3.3.1.tar.gz -C ./
+          echo "SOURCE_ROOT=$(pwd)" >> "$GITHUB_ENV"
+
+      - name: Set up build environment variables
+        run: |
+          echo "CROSS_COMPILE=$(xcode-select --print-path)/Toolchains/XcodeDefault.xctoolchain/usr/bin/" >> "$GITHUB_ENV"
+          echo "CROSS_TOP=$(xcode-select --print-path)/Platforms/MacOSX.platform/Developer" >> "$GITHUB_ENV"
+          echo "CROSS_SDK=MacOSX.sdk" >> "$GITHUB_ENV"
+          echo "BUILD_ROOT=/private/tmp/openssl-macos" >> "$GITHUB_ENV"
+
+      - name: Prepare build directory
+        run: |
+          mkdir -p "$BUILD_ROOT"
+
+      - name: Compile OpenSSL for x86_64
+        run: |
+          ARCH="x86_64"
+          perl ./Configure no-asm no-apps no-docs no-shared no-dso no-quic darwin64-$ARCH --prefix="$BUILD_ROOT"
+          make -j8
+          make install
+
+      - name: Compile OpenSSL for arm64
+        run: |
+          ARCH="arm64"
+          perl ./Configure no-asm no-apps no-docs no-shared no-dso no-quic darwin64-$ARCH --prefix="$BUILD_ROOT"
+          make -j8
+          make install
+
+      - name: Merge libssl and libcrypto into a single static library
+        run: |
+          libtool -static -o "$BUILD_ROOT/lib/openssl.a" \
+              "$BUILD_ROOT/lib/libssl.a" \
+              "$BUILD_ROOT/lib/libcrypto.a"
+
+      - name: Create XCFramework
+        run: |
+          OUTPUT_FRAMEWORK="$BUILD_ROOT/OpenSSL.xcframework"
+          rm -rf $OUTPUT_FRAMEWORK
+          xcodebuild -create-xcframework \
+              -library $BUILD_ROOT/lib/openssl.a \
+              -headers $BUILD_ROOT/include \
+              -output $OUTPUT_FRAMEWORK
+
+      - name: Upload XCFramework artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenSSL
+          path: $BUILD_ROOT/OpenSSL.xcframework
