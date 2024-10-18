@@ -32,10 +32,14 @@ jobs:
         run: |
           echo "BUILD_ROOT=$(mktemp -d -t openssl-macos)" >> "$GITHUB_ENV"
 
-      - name: Compile OpenSSL
+      - name: Configure OpenSSL
         run: |
           cd $SOURCE_ROOT
           perl ./Configure $OPENSSL_CONFIGURE_OPTIONS --prefix="$BUILD_ROOT"
+
+      - name: Make OpenSSL
+        run: |
+          cd $SOURCE_ROOT
           make -j8
           make install
 
