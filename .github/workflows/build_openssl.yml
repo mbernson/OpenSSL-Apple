@@ -7,7 +7,7 @@ on:
 
 env:
   OPENSSL_VERSION: 3.3.1
-  OPENSSL_CONFIGURE_OPTIONS: no-asm no-apps no-docs no-shared no-dso no-quic darwin64-x86_64
+  OPENSSL_CONFIGURE_OPTIONS: no-asm no-apps no-docs no-shared no-dso no-quic darwin64-arm64
 
 jobs:
   build:
