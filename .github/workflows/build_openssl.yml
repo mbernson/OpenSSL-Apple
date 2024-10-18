@@ -7,7 +7,7 @@ on:
 
 env:
   OPENSSL_VERSION: 3.3.1
-  OPENSSL_CONFIGURE_OPTIONS: no-asm no-apps no-docs no-shared no-dso no-quic darwin64-arm64
+  OPENSSL_CONFIGURE_OPTIONS: no-asm no-apps no-docs no-shared no-dso no-quic darwin64-x86_64
 
 jobs:
   build:
@@ -35,8 +35,7 @@ jobs:
       - name: Configure OpenSSL
         run: |
           cd $SOURCE_ROOT
-          perl ./Configure $OPENSSL_CONFIGURE_OPTIONS --prefix="$BUILD_ROOT"
-
+          perl ./Configure $OPENSSL_CONFIGURE_OPTIONS --prefix="$BUILD_ROOT" --cross-compile-prefix="$CROSS_COMPILE"
       - name: Make OpenSSL
         run: |
           cd $SOURCE_ROOT
