@@ -7,7 +7,8 @@ on:
 
 env:
   OPENSSL_VERSION: 3.3.1
-  OPENSSL_CONFIGURE_OPTIONS: no-asm no-apps no-docs no-shared no-dso no-quic darwin64-x86_64
+  OPENSSL_CONFIGURE_OPTIONS: no-asm no-apps no-docs no-shared no-dso no-quic
+  MACOSX_DEPLOYMENT_TARGET: 11.0
 
 jobs:
   build:
@@ -22,20 +23,16 @@ jobs:
           tar xzf openssl-$OPENSSL_VERSION.tar.gz
           echo "SOURCE_ROOT=$(pwd)/openssl-$OPENSSL_VERSION" >> "$GITHUB_ENV"
 
-      # - name: Set up build environment variables
-      #   run: |
-      #     echo "CROSS_COMPILE=$(xcode-select --print-path)/Toolchains/XcodeDefault.xctoolchain/usr/bin/" >> "$GITHUB_ENV"
-      #     echo "CROSS_TOP=$(xcode-select --print-path)/Platforms/MacOSX.platform/Developer" >> "$GITHUB_ENV"
-      #     echo "CROSS_SDK=MacOSX.sdk" >> "$GITHUB_ENV"
-
       - name: Prepare build directory
         run: |
           echo "BUILD_ROOT=$(mktemp -d -t openssl-macos)" >> "$GITHUB_ENV"
 
       - name: Configure OpenSSL
+        env:
+          ARCH: arm64
         run: |
           cd $SOURCE_ROOT
-          perl ./Configure $OPENSSL_CONFIGURE_OPTIONS --prefix="$BUILD_ROOT"
+          perl ./Configure $OPENSSL_CONFIGURE_OPTIONS darwin64-$ARCH --prefix="$BUILD_ROOT"
 
       - name: Build OpenSSL for macOS
         run: |
