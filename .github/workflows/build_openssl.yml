@@ -21,36 +21,54 @@ jobs:
         run: |
           curl -LO https://github.com/openssl/openssl/releases/download/openssl-$OPENSSL_VERSION/openssl-$OPENSSL_VERSION.tar.gz
           tar xzf openssl-$OPENSSL_VERSION.tar.gz
-          echo "SOURCE_ROOT=$(pwd)/openssl-$OPENSSL_VERSION" >> "$GITHUB_ENV"
+          mv openssl-$OPENSSL_VERSION openssl-$OPENSSL_VERSION-x86_64
+          cp -r openssl-$OPENSSL_VERSION-x86_64 openssl-$OPENSSL_VERSION-arm64
+          echo "SOURCE_ROOT_X86_64=$(pwd)/openssl-$OPENSSL_VERSION-x86_64" >> "$GITHUB_ENV"
+          echo "SOURCE_ROOT_ARM64=$(pwd)/openssl-$OPENSSL_VERSION-arm64" >> "$GITHUB_ENV"
 
-      - name: Prepare build directory
+      - name: Prepare build directories
         run: |
-          echo "BUILD_ROOT=$(mktemp -d -t openssl-macos)" >> "$GITHUB_ENV"
+          echo "BUILD_ROOT_X86_64=$(mktemp -d -t openssl-macos)" >> "$GITHUB_ENV"
+          echo "BUILD_ROOT_ARM64=$(mktemp -d -t openssl-macos)" >> "$GITHUB_ENV"
 
-      - name: Configure OpenSSL
-        env:
-          ARCH: arm64
+      - name: Configure OpenSSL for macOS ARM64
         run: |
-          cd $SOURCE_ROOT
-          perl ./Configure $OPENSSL_CONFIGURE_OPTIONS darwin64-$ARCH --prefix="$BUILD_ROOT"
+          cd $SOURCE_ROOT_ARM64
+          perl ./Configure $OPENSSL_CONFIGURE_OPTIONS darwin64-arm64 --prefix="$BUILD_ROOT_ARM64"
 
-      - name: Build OpenSSL for macOS
+      - name: Build OpenSSL for macOS ARM64
         run: |
-          cd $SOURCE_ROOT
+          cd $SOURCE_ROOT_ARM64
+          make -j8
+          make install
+
+      - name: Configure OpenSSL for macOS x86_64
+        run: |
+          cd $SOURCE_ROOT_X86_64
+          perl ./Configure $OPENSSL_CONFIGURE_OPTIONS darwin64-x86_64 --prefix="$BUILD_ROOT_X86_64"
+
+      - name: Build OpenSSL for macOS ARM64
+        run: |
+          cd $SOURCE_ROOT_X86_64
           make -j8
           make install
 
       - name: Merge libssl and libcrypto into a single static library
         run: |
-          libtool -static -o "$BUILD_ROOT/lib/openssl.a" \
-              "$BUILD_ROOT/lib/libssl.a" \
-              "$BUILD_ROOT/lib/libcrypto.a"
+          libtool -static -o "$BUILD_ROOT_X86_64/lib/openssl.a" \
+              "$BUILD_ROOT_X86_64/lib/libssl.a" \
+              "$BUILD_ROOT_X86_64/lib/libcrypto.a"
+          libtool -static -o "$BUILD_ROOT_ARM64/lib/openssl.a" \
+              "$BUILD_ROOT_ARM64/lib/libssl.a" \
+              "$BUILD_ROOT_ARM64/lib/libcrypto.a"
 
       - name: Create XCFramework
         run: |
           xcodebuild -create-xcframework \
-              -library $BUILD_ROOT/lib/openssl.a \
-              -headers $BUILD_ROOT/include \
+              -library $BUILD_ROOT_ARM64/lib/openssl.a \
+              -headers $BUILD_ROOT_ARM64/include \
+              -library $BUILD_ROOT_X86_64/lib/openssl.a \
+              -headers $BUILD_ROOT_X86_64/include \
               -output OpenSSL.xcframework
 
       - name: Upload XCFramework artifact
