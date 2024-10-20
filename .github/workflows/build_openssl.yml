@@ -47,28 +47,25 @@ jobs:
           cd $SOURCE_ROOT_X86_64
           perl ./Configure $OPENSSL_CONFIGURE_OPTIONS darwin64-x86_64 --prefix="$BUILD_ROOT_X86_64"
 
-      - name: Build OpenSSL for macOS ARM64
+      - name: Build OpenSSL for macOS x86_64
         run: |
           cd $SOURCE_ROOT_X86_64
           make -j8
           make install
 
-      - name: Merge libssl and libcrypto into a single static library
+      - name: Merge into a single static library
         run: |
-          libtool -static -o "$BUILD_ROOT_X86_64/lib/openssl.a" \
+          libtool -static -o "openssl.a" \
+              "$BUILD_ROOT_ARM64/lib/libssl.a" \
+              "$BUILD_ROOT_ARM64/lib/libcrypto.a" \
               "$BUILD_ROOT_X86_64/lib/libssl.a" \
               "$BUILD_ROOT_X86_64/lib/libcrypto.a"
-          libtool -static -o "$BUILD_ROOT_ARM64/lib/openssl.a" \
-              "$BUILD_ROOT_ARM64/lib/libssl.a" \
-              "$BUILD_ROOT_ARM64/lib/libcrypto.a"
 
       - name: Create XCFramework
         run: |
           xcodebuild -create-xcframework \
-              -library $BUILD_ROOT_ARM64/lib/openssl.a \
+              -library openssl.a \
               -headers $BUILD_ROOT_ARM64/include \
-              -library $BUILD_ROOT_X86_64/lib/openssl.a \
-              -headers $BUILD_ROOT_X86_64/include \
               -output OpenSSL.xcframework
 
       - name: Upload XCFramework artifact
