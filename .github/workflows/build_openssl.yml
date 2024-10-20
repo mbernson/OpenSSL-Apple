@@ -36,7 +36,8 @@ jobs:
         run: |
           cd $SOURCE_ROOT
           perl ./Configure $OPENSSL_CONFIGURE_OPTIONS --prefix="$BUILD_ROOT"
-      - name: Make OpenSSL
+
+      - name: Build OpenSSL for macOS
         run: |
           cd $SOURCE_ROOT
           make -j8
