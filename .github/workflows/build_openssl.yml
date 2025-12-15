@@ -8,7 +8,6 @@ on:
 env:
   OPENSSL_VERSION: 3.6.0
   OPENSSL_CONFIGURE_OPTIONS: no-asm no-apps no-docs no-shared no-dso no-quic
-  MACOSX_DEPLOYMENT_TARGET: 12.0
 
 jobs:
   build:
