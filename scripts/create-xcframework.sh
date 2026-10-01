@@ -27,8 +27,8 @@ for platform in macos ios iossimulator; do
 		libraries+=("$slice/lib/libssl.a" "$slice/lib/libcrypto.a")
 	done
 	mkdir -p "$MERGED_DIR/$platform"
-	libtool -static -o "$MERGED_DIR/$platform/openssl.a" "${libraries[@]}"
-	create_args+=(-library "$MERGED_DIR/$platform/openssl.a" -headers "${slices[0]}/include")
+	libtool -static -o "$MERGED_DIR/$platform/libopenssl.a" "${libraries[@]}"
+	create_args+=(-library "$MERGED_DIR/$platform/libopenssl.a" -headers "${slices[0]}/include")
 done
 
 rm -rf "$OUTPUT"
