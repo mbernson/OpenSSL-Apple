@@ -1,0 +1,128 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: OpenSSL version to build. Becomes the package tag and release name.
+        required: true
+        default: "4.0.3"
+
+permissions:
+  contents: write
+
+env:
+  OPENSSL_VERSION: ${{ inputs.version }}
+  ASSET_NAME: OpenSSL.xcframework.zip
+
+jobs:
+  check:
+    name: Check that the release does not exist yet
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - run: |
+          if gh release view "$OPENSSL_VERSION" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "::error::Release $OPENSSL_VERSION already exists. Delete the release and its tag before rebuilding."
+            exit 1
+          fi
+
+  build:
+    name: Build ${{ matrix.slice }}
+    needs: check
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        include:
+          - slice: macos-arm64
+            target: darwin64-arm64
+            min_version: -mmacosx-version-min=11.0
+          - slice: macos-x86_64
+            target: darwin64-x86_64
+            min_version: -mmacosx-version-min=10.13
+          - slice: ios-arm64
+            target: ios64-xcrun
+            min_version: -mios-version-min=15.5
+          - slice: iossimulator-arm64
+            target: iossimulator-arm64-xcrun
+            min_version: -mios-simulator-version-min=15.5
+          - slice: iossimulator-x86_64
+            target: iossimulator-x86_64-xcrun
+            min_version: -mios-simulator-version-min=15.5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Download OpenSSL source
+        run: scripts/download-source.sh "$OPENSSL_VERSION" "$RUNNER_TEMP/source"
+      - name: Build
+        run: scripts/build-slice.sh "$RUNNER_TEMP/source/openssl-$OPENSSL_VERSION.tar.gz" "${{ matrix.target }}" "${{ matrix.min_version }}" "slices/${{ matrix.slice }}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: slice-${{ matrix.slice }}
+          path: slices/${{ matrix.slice }}
+          if-no-files-found: error
+
+  release:
+    name: Package and release
+    needs: build
+    runs-on: macos-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: slice-*
+          path: slices
+      - name: Strip artifact name prefix
+        run: for dir in slices/slice-*; do mv "$dir" "slices/${dir#slices/slice-}"; done
+      - name: Download OpenSSL source for the license file
+        run: |
+          scripts/download-source.sh "$OPENSSL_VERSION" "$RUNNER_TEMP/source"
+          tar xzf "$RUNNER_TEMP/source/openssl-$OPENSSL_VERSION.tar.gz" -C "$RUNNER_TEMP/source" "openssl-$OPENSSL_VERSION/LICENSE.txt"
+      - name: Create XCFramework
+        run: scripts/create-xcframework.sh slices "$RUNNER_TEMP/source/openssl-$OPENSSL_VERSION/LICENSE.txt" OpenSSL.xcframework
+      - name: Zip
+        run: ditto -c -k --keepParent OpenSSL.xcframework "$ASSET_NAME"
+      - name: Update Package.swift
+        id: manifest
+        run: |
+          ASSET_URL="https://github.com/$GITHUB_REPOSITORY/releases/download/$OPENSSL_VERSION/$ASSET_NAME"
+          CHECKSUM=$(scripts/update-manifest.sh "$ASSET_URL" "$ASSET_NAME")
+          echo "url=$ASSET_URL" >> "$GITHUB_OUTPUT"
+          echo "checksum=$CHECKSUM" >> "$GITHUB_OUTPUT"
+      - name: Write release notes
+        run: |
+          cat > "$RUNNER_TEMP/notes.md" <<NOTES
+          Static OpenSSL $OPENSSL_VERSION for macOS (arm64, x86_64), iOS (arm64) and iOS Simulator (arm64, x86_64).
+
+          | | |
+          |---|---|
+          | Asset | ${{ steps.manifest.outputs.url }} |
+          | SPM checksum | \`${{ steps.manifest.outputs.checksum }}\` |
+          | Source SHA-256 | \`$(awk '{print $1}' "$RUNNER_TEMP/source/openssl-$OPENSSL_VERSION.tar.gz.sha256")\` |
+          | Built from | $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID |
+          NOTES
+          cat "$RUNNER_TEMP/notes.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Commit Package.swift
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Release OpenSSL $OPENSSL_VERSION"
+          git push origin "HEAD:$GITHUB_REF_NAME"
+      - name: Create release
+        run: |
+          gh release create "$OPENSSL_VERSION" "$ASSET_NAME" \
+            --target "$(git rev-parse HEAD)" \
+            --title "OpenSSL $OPENSSL_VERSION" \
+            --notes-file "$RUNNER_TEMP/notes.md"
+
+  verify:
+    name: Verify the published package resolves
+    needs: release
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.version }}
+      - run: swift build

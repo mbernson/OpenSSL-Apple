@@ -1,0 +1,6 @@
+/slices/
+/build/
+*.xcframework
+*.xcframework.zip
+.build/
+.swiftpm/
