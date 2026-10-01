@@ -54,6 +54,7 @@ scripts/build-slice.sh build/openssl-4.0.3.tar.gz darwin64-arm64 -mmacosx-versio
 scripts/build-slice.sh build/openssl-4.0.3.tar.gz darwin64-x86_64 -mmacosx-version-min=10.13 slices/macos-x86_64
 scripts/build-slice.sh build/openssl-4.0.3.tar.gz iossimulator-arm64-xcrun -mios-simulator-version-min=15.5 slices/iossimulator-arm64
 scripts/create-xcframework.sh slices path/to/LICENSE.txt OpenSSL.xcframework
+scripts/verify-release.sh 4.0.3
 ```
 
 See `.github/workflows/release.yml` for the configure target and minimum-version flag of every slice.
