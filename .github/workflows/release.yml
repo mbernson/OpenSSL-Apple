@@ -118,11 +118,9 @@ jobs:
             --notes-file "$RUNNER_TEMP/notes.md"
 
   verify:
-    name: Verify the published package resolves
+    name: Verify the published package from a consumer
     needs: release
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ inputs.version }}
-      - run: swift build
+      - run: scripts/verify-release.sh "$OPENSSL_VERSION" "https://github.com/$GITHUB_REPOSITORY.git"

@@ -42,7 +42,7 @@ Open Actions → Release → Run workflow and enter the OpenSSL version. The wor
 2. Merges them into `OpenSSL.xcframework` and zips it.
 3. Writes the asset URL and SPM checksum into `Package.swift` and commits that.
 4. Creates the GitHub release, tagged with the version, with the zip attached.
-5. Checks out the new tag and runs `swift build` to confirm the artifact resolves.
+5. Builds and runs an example package depending on the new version, to confirm the artifact downloads, compiles and links (`scripts/verify-release.sh`).
 
 The asset URL is derived from the tag, so the manifest committed in step 3 is already correct before the release exists. A version can only be released once. To rebuild it, delete the release and its tag first.
 
@@ -52,6 +52,7 @@ The asset URL is derived from the tag, so the manifest committed in step 3 is al
 scripts/download-source.sh 4.0.3 build
 scripts/build-slice.sh build/openssl-4.0.3.tar.gz darwin64-arm64 -mmacosx-version-min=12.0 slices/macos-arm64
 scripts/build-slice.sh build/openssl-4.0.3.tar.gz darwin64-x86_64 -mmacosx-version-min=10.13 slices/macos-x86_64
+scripts/build-slice.sh build/openssl-4.0.3.tar.gz iossimulator-arm64-xcrun -mios-simulator-version-min=15.5 slices/iossimulator-arm64
 scripts/create-xcframework.sh slices path/to/LICENSE.txt OpenSSL.xcframework
 ```
 
