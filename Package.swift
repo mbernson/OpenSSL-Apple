@@ -15,8 +15,8 @@ let package = Package(
         // The release workflow rewrites `url` and `checksum` for every release.
         .binaryTarget(
             name: "OpenSSL",
-            url: "https://github.com/mbernson/OpenSSL-Apple/releases/download/0.0.0/OpenSSL.xcframework.zip",
-            checksum: "0000000000000000000000000000000000000000000000000000000000000000"
+            url: "https://github.com/mbernson/OpenSSL-Apple/releases/download/4.0.3/OpenSSL.xcframework.zip",
+            checksum: "262cac5a3fc1016a8823c4ce0e7a22b8652bd8aa44a9a8f1dff5aa66d065b78f"
         ),
     ]
 )
